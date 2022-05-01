@@ -1,5 +1,4 @@
 from torchvision import models
-from collections import namedtuple
 import torch
 import torch.nn as nn
 from typing import List
@@ -17,16 +16,17 @@ def vgg_preprocess(tensor):
     return tensor_norm
 
 
-class vgg19(nn.Module):
+class VGG19Extractor(nn.Module):
     def __init__(self, pretrained_path="experiments/Color2Embed_1/vgg19-dcbb9e9d.pth", require_grad=False):
-        super(vgg19, self).__init__()
+        super(VGG19Extractor, self).__init__()
         vgg_model = models.vgg19()
         if pretrained_path != None:
             print("----load pretrained vgg19----")
             vgg_model.load_state_dict(torch.load(pretrained_path))
             print("----load done!----")
         vgg_feature = vgg_model.features
-        seq_list = [nn.Sequential(ele) for ele in vgg_feature]
+        # seq_list = [nn.Sequential(ele) for ele in vgg_feature]
+        seq_list = [ele for ele in vgg_feature]
         # self.vgg_layer = ['conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
         #                  'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
         #                  'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3', 'relu3_3', 'conv3_4', 'relu3_4', 'pool3',

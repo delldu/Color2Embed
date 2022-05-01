@@ -67,7 +67,7 @@ def preprocessing(inputs):
     img = numpy2tensor(img)
     img_lab = numpy2tensor(img_lab)
     # img.size() -- [3, 313, 335], [0, 255,0]
-    # img_lab-L [-50.0, 50.0], A[-127, 127], B[127, 127]
+    # img_lab-L [-50.0, 50.0], A[-110, 110], B[-110, 110]
     return img.unsqueeze(0), img_lab.unsqueeze(0)
 
 
@@ -75,10 +75,10 @@ def load_color_net(model, state_dict):
     """Load model."""
 
     def name_transform(name):
-        # vgg.vgg_model.features.x.weight --> vgg.block.x.0.weight
+        # vgg.vgg_model.features.x.weight --> vgg.block.x.weight
         if name.startswith("vgg.vgg_model.features."):
             name_list = name.split(".")
-            return "vgg.block." + name_list[3] + ".0." + name_list[4]
+            return "vgg.block." + name_list[3] + '.' + name_list[4]
         return name
 
     target_state_dict = model.state_dict()

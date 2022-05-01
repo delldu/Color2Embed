@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from vgg_model import vgg19
+from vgg_model import VGG19Extractor
 import pdb
 
 
@@ -140,8 +140,7 @@ class ColorEncoder(nn.Module):
     def __init__(self, color_dim=512):
         super(ColorEncoder, self).__init__()
 
-        # self.vgg = vgg19(pretrained_path=None)
-        self.vgg = vgg19()
+        self.vgg = VGG19Extractor()
 
         self.feature2vector = nn.Sequential(
             nn.Conv2d(color_dim, color_dim, 4, 2, 2),  # 8x8
@@ -185,6 +184,8 @@ class ColorUNet(nn.Module):
         self.down2 = Down(128, 256)
         self.down3 = Down(256, 512)
         factor = 2 if bilinear else 1
+        print("### ColorUNet factor: ", factor)
+
         self.down4 = Down(512, 1024 // factor)
 
         self.up1 = UpBlock(512, 1024, 512 // factor, 3, bilinear)
