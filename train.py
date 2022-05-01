@@ -276,7 +276,7 @@ if __name__ == "__main__":
 
     args.start_iter = 0
 
-    vggnet = vgg19(pretrained_path = '/mnt/hyzhao/Documents/Color2Style/DEVC/data/vgg19-dcbb9e9d.pth', require_grad = False)
+    vggnet = vgg19(pretrained_path = 'experiments/Color2Embed_1/vgg19-dcbb9e9d.pth', require_grad = False)
     vggnet = vggnet.to(device)
     vggnet.eval()
 

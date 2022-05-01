@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from vgg_model import vgg19
+import pdb
 
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -168,18 +169,19 @@ class ColorEncoder(nn.Module):
         self.color_dim = color_dim
 
     def forward(self, x):
-        # x #[0, 1] RGB
+        # x #[0, 1] RGB, [1, 3, 256, 256]
         vgg_fea = self.vgg(x, layer_name='relu5_2') # [B, 512, 16, 16]
-
         x_color = self.feature2vector(vgg_fea[-1]) # [B, 512, 1, 1]
-
+        # x_color.size() -- [1, 512, 1, 1]
         return x_color
 
 
 class ColorUNet(nn.Module):
-    ### this model output is ab
     def __init__(self, n_channels=1, n_classes=3, bilinear=True):
         super(ColorUNet, self).__init__()
+        # n_channels = 1
+        # n_classes = 3
+        # bilinear = True
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
@@ -206,6 +208,8 @@ class ColorUNet(nn.Module):
         # print(torch.max(x[0]), torch.min(x[0])) #[-1, 1] gray image L
         # print(torch.max(x[1]), torch.min(x[1])) # color vector
 
+        # (Pdb) x[0].size() -- [1, 1, 256, 256]
+        # (Pdb) x[1].size() -- [1, 512, 1, 1]
         x_color = x[1] # [B, 512, 1, 1]
 
         x1 = self.inc(x[0]) # [B, 64, 256, 256]
@@ -219,5 +223,8 @@ class ColorUNet(nn.Module):
         x8 = self.up3(x7, x2, x_color) # [B, 64, 128, 128]
         x9 = self.up4(x8, x1, x_color) # [B, 64, 256, 256]
         x_ab = self.outc(x9)
+
+        # x_ab.size() -- [1, 2, 256, 256]
+        # x_ab.min(), x_ab.max() -- -0.2950, 0.4178
 
         return x_ab
