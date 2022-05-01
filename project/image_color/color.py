@@ -83,7 +83,7 @@ class VGG19Extractor(nn.Module):
             self.block.append(seq_list[i])
 
     def forward(self, x):
-        '''Return relu5_2 feature'''
+        """Return relu5_2 feature"""
         x = vgg_normal(x)
         for i, blk in enumerate(self.block):
             x = blk(x)
@@ -140,6 +140,7 @@ class Down(nn.Module):
 
     def forward(self, x):
         return self.main(x)
+
 
 class SDFT(nn.Module):
     def __init__(self, color_dim, channels, kernel_size=3):
@@ -232,6 +233,7 @@ class ColorEncoder(nn.Module):
         # color_vector.size() -- [1, 512, 1, 1]
         return color_vector
 
+
 class ColorDecoder(nn.Module):
     def __init__(self, n_channels=1, n_classes=3):
         super(ColorDecoder, self).__init__()
@@ -250,10 +252,7 @@ class ColorDecoder(nn.Module):
         self.up3 = UpBlock(512, 256, 128 // factor, 5)
         self.up4 = UpBlock(512, 128, 64, 5)
         self.outc = nn.Sequential(
-            nn.Conv2d(64, 64, 3, 1, 1), 
-            nn.LeakyReLU(0.2, True), 
-            nn.Conv2d(64, 2, 3, 1, 1), 
-            nn.Tanh()
+            nn.Conv2d(64, 64, 3, 1, 1), nn.LeakyReLU(0.2, True), nn.Conv2d(64, 2, 3, 1, 1), nn.Tanh()
         )
 
     def forward(self, x: List[torch.Tensor]):
@@ -291,26 +290,30 @@ class ColorModel(nn.Module):
         H, W = int(grey.size(2)), int(grey.size(3))
 
         gray_lab = data.rgb2lab(grey)
-        gray_256 = F.interpolate(gray_lab[:, 0:1, :, :], size=(256, 256),
+        gray_256 = F.interpolate(
+            gray_lab[:, 0:1, :, :],
+            size=(256, 256),
             mode="bilinear",
             recompute_scale_factor=False,
             align_corners=False,
         )
         # gray_256 in L-space, [-1.0, 1.0]
-        # pdb.set_trace()
-
-        color_256 = F.interpolate(color, size=(256, 256),
+        color_256 = F.interpolate(
+            color,
+            size=(256, 256),
             mode="bilinear",
             recompute_scale_factor=False,
             align_corners=False,
         )
         color_vector = self.encoder(color_256)
         fake_ab_256 = self.decoder([gray_256, color_vector])
-        fake_ab = F.interpolate(fake_ab_256, size=(H, W),
+        fake_ab = F.interpolate(
+            fake_ab_256,
+            size=(H, W),
             mode="bilinear",
             recompute_scale_factor=False,
             align_corners=False,
         )
-        color_lab = torch.cat((gray_lab[:, 0:1, :, :], fake_ab), dim = 1)
+        color_lab = torch.cat((gray_lab[:, 0:1, :, :], fake_ab), dim=1)
 
-        return data.lab2rgb(color_lab).clamp(0.0, 1.0)
+        return data.lab2rgb(color_lab)

@@ -116,7 +116,9 @@ def image_predict(grey_input_files, color_input_files, output_dir):
         output_file = f"{output_dir}/{os.path.basename(g_filename)}"
 
         H, W = g_input_tensor.size(2), g_input_tensor.size(3)
-        c_input_tensor = F.interpolate(c_input_tensor, size=(H, W),
+        c_input_tensor = F.interpolate(
+            c_input_tensor,
+            size=(H, W),
             mode="bilinear",
             recompute_scale_factor=False,
             align_corners=False,

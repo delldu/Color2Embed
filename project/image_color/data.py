@@ -93,7 +93,7 @@ def lab2xyz(lab):
 
 
 def rgb2lab(rgb):
-    '''rgb in [0.0, 1.0], Lab in [-1.0, 1.0]'''
+    """rgb in [0.0, 1.0], Lab in [-1.0, 1.0]"""
     lab = xyz2lab(rgb2xyz(rgb))
 
     l_rs = (lab[:, [0], :, :] - 50.0) / 50.0
@@ -101,18 +101,17 @@ def rgb2lab(rgb):
 
     out = torch.cat((l_rs, ab_rs), dim=1)
 
-
     return out
 
 
-def rgba2lab(rgba):
-    lab = xyz2lab(rgb2xyz(rgba[:, 0:3, :, :]))
-    l_rs = (lab[:, [0], :, :] - 50.0) / 50.0
-    ab_rs = lab[:, 1:, :, :] / 110.0
-    mask_rs = rgba[:, 3:4, :, :]
+# def rgba2lab(rgba):
+#     lab = xyz2lab(rgb2xyz(rgba[:, 0:3, :, :]))
+#     l_rs = (lab[:, [0], :, :] - 50.0) / 50.0
+#     ab_rs = lab[:, 1:, :, :] / 110.0
+#     mask_rs = rgba[:, 3:4, :, :]
 
-    out = torch.cat((l_rs, ab_rs, mask_rs), dim=1)
-    return out
+#     out = torch.cat((l_rs, ab_rs, mask_rs), dim=1)
+#     return out
 
 
 def lab2rgb(lab_rs):
@@ -121,8 +120,8 @@ def lab2rgb(lab_rs):
     lab = torch.cat((l, ab), dim=1)
 
     out = xyz2rgb(lab2xyz(lab))
-    return out
+    return out.clamp(0.0, 1.0)
 
 
-def Lab2rgb(L, ab):
-    return lab2rgb(torch.cat((L, ab), dim=1))
+# def Lab2rgb(L, ab):
+#     return lab2rgb(torch.cat((L, ab), dim=1))
