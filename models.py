@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from vgg_model import vgg19
 import pdb
 
+
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
@@ -20,12 +21,13 @@ class DoubleConv(nn.Module):
             nn.LeakyReLU(0.1, True),
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(0.1, True)
+            nn.LeakyReLU(0.1, True),
         )
 
     def forward(self, x):
         x = self.double_conv(x)
         return x
+
 
 class ResBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -37,7 +39,7 @@ class ResBlock(nn.Module):
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
             nn.LeakyReLU(0.2, True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
         )
 
     def forward(self, x):
@@ -55,9 +57,8 @@ class Down(nn.Module):
             nn.Conv2d(in_channels, in_channels, 4, 2, 1),
             nn.LeakyReLU(0.1, True),
             # DoubleConv(in_channels, out_channels)
-            ResBlock(in_channels, out_channels)
+            ResBlock(in_channels, out_channels),
         )
-        
 
     def forward(self, x):
 
@@ -65,11 +66,11 @@ class Down(nn.Module):
 
         return x
 
-class SDFT(nn.Module):
 
-    def __init__(self, color_dim, channels, kernel_size = 3):
+class SDFT(nn.Module):
+    def __init__(self, color_dim, channels, kernel_size=3):
         super().__init__()
-        
+
         # generate global conv weights
         fan_in = channels * kernel_size ** 2
         self.kernel_size = kernel_size
@@ -77,9 +78,7 @@ class SDFT(nn.Module):
 
         self.scale = 1 / math.sqrt(fan_in)
         self.modulation = nn.Conv2d(color_dim, channels, 1)
-        self.weight = nn.Parameter(
-            torch.randn(1, channels, channels, kernel_size, kernel_size)
-        )
+        self.weight = nn.Parameter(torch.randn(1, channels, channels, kernel_size, kernel_size))
 
     def forward(self, fea, color_style):
         # for global adjustation
@@ -91,9 +90,7 @@ class SDFT(nn.Module):
         demod = torch.rsqrt(weight.pow(2).sum([2, 3, 4]) + 1e-8)
         weight = weight * demod.view(B, C, 1, 1, 1)
 
-        weight = weight.view(
-            B * C, C, self.kernel_size, self.kernel_size
-        )
+        weight = weight.view(B * C, C, self.kernel_size, self.kernel_size)
 
         fea = fea.view(1, B * C, H, W)
         fea = F.conv2d(fea, weight, padding=self.padding, groups=B)
@@ -103,30 +100,27 @@ class SDFT(nn.Module):
 
 
 class UpBlock(nn.Module):
-    
-
-    def __init__(self, color_dim, in_channels, out_channels, kernel_size = 3, bilinear=True):
+    def __init__(self, color_dim, in_channels, out_channels, kernel_size=3, bilinear=True):
         super().__init__()
 
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
-            
+            self.up = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=False)
+
         else:
-            self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
+            self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
 
         self.conv_cat = nn.Sequential(
             nn.Conv2d(in_channels // 2 + in_channels // 8, out_channels, 1, 1, 0),
             nn.LeakyReLU(0.2, True),
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.LeakyReLU(0.2, True)
+            nn.LeakyReLU(0.2, True),
         )
 
-        self.conv_s = nn.Conv2d(in_channels//2, out_channels, 1, 1, 0)
+        self.conv_s = nn.Conv2d(in_channels // 2, out_channels, 1, 1, 0)
 
         # generate global conv weights
         self.SDFT = SDFT(color_dim, out_channels, kernel_size)
-
 
     def forward(self, x1, x2, color_style):
         # print(x1.shape, x2.shape, color_style.shape)
@@ -150,28 +144,28 @@ class ColorEncoder(nn.Module):
         self.vgg = vgg19()
 
         self.feature2vector = nn.Sequential(
-            nn.Conv2d(color_dim, color_dim, 4, 2, 2), # 8x8
+            nn.Conv2d(color_dim, color_dim, 4, 2, 2),  # 8x8
             nn.LeakyReLU(0.2, True),
             nn.Conv2d(color_dim, color_dim, 3, 1, 1),
             nn.LeakyReLU(0.2, True),
-            nn.Conv2d(color_dim, color_dim, 4, 2, 2), # 4x4
+            nn.Conv2d(color_dim, color_dim, 4, 2, 2),  # 4x4
             nn.LeakyReLU(0.2, True),
             nn.Conv2d(color_dim, color_dim, 3, 1, 1),
             nn.LeakyReLU(0.2, True),
-            nn.AdaptiveAvgPool2d((1, 1)), # 1x1
-            nn.Conv2d(color_dim, color_dim//2, 1), # linear-1
+            nn.AdaptiveAvgPool2d((1, 1)),  # 1x1
+            nn.Conv2d(color_dim, color_dim // 2, 1),  # linear-1
             nn.LeakyReLU(0.2, True),
-            nn.Conv2d(color_dim//2, color_dim//2, 1), # linear-2
+            nn.Conv2d(color_dim // 2, color_dim // 2, 1),  # linear-2
             nn.LeakyReLU(0.2, True),
-            nn.Conv2d(color_dim//2, color_dim, 1), # linear-3
+            nn.Conv2d(color_dim // 2, color_dim, 1),  # linear-3
         )
 
         self.color_dim = color_dim
 
     def forward(self, x):
         # x #[0, 1] RGB, [1, 3, 256, 256]
-        vgg_fea = self.vgg(x, layer_name='relu5_2') # [B, 512, 16, 16]
-        x_color = self.feature2vector(vgg_fea[-1]) # [B, 512, 1, 1]
+        vgg_fea = self.vgg(x, layer_name="relu5_2")  # [B, 512, 16, 16]
+        x_color = self.feature2vector(vgg_fea[-1])  # [B, 512, 1, 1]
         # x_color.size() -- [1, 512, 1, 1]
         return x_color
 
@@ -198,10 +192,7 @@ class ColorUNet(nn.Module):
         self.up3 = UpBlock(512, 256, 128 // factor, 5, bilinear)
         self.up4 = UpBlock(512, 128, 64, 5, bilinear)
         self.outc = nn.Sequential(
-                nn.Conv2d(64, 64, 3, 1, 1),
-                nn.LeakyReLU(0.2, True),
-                nn.Conv2d(64, 2, 3, 1, 1),
-                nn.Tanh()
+            nn.Conv2d(64, 64, 3, 1, 1), nn.LeakyReLU(0.2, True), nn.Conv2d(64, 2, 3, 1, 1), nn.Tanh()
         )
 
     def forward(self, x):
@@ -210,18 +201,18 @@ class ColorUNet(nn.Module):
 
         # (Pdb) x[0].size() -- [1, 1, 256, 256]
         # (Pdb) x[1].size() -- [1, 512, 1, 1]
-        x_color = x[1] # [B, 512, 1, 1]
+        x_color = x[1]  # [B, 512, 1, 1]
 
-        x1 = self.inc(x[0]) # [B, 64, 256, 256]
-        x2 = self.down1(x1) # [B, 128, 128, 128]
-        x3 = self.down2(x2) # [B, 256, 64, 64]
-        x4 = self.down3(x3) # [B, 512, 32, 32]
-        x5 = self.down4(x4) # [B, 512, 16, 16]
+        x1 = self.inc(x[0])  # [B, 64, 256, 256]
+        x2 = self.down1(x1)  # [B, 128, 128, 128]
+        x3 = self.down2(x2)  # [B, 256, 64, 64]
+        x4 = self.down3(x3)  # [B, 512, 32, 32]
+        x5 = self.down4(x4)  # [B, 512, 16, 16]
 
-        x6 = self.up1(x5, x4, x_color) # [B, 256, 32, 32]
-        x7 = self.up2(x6, x3, x_color) # [B, 128, 64, 64]
-        x8 = self.up3(x7, x2, x_color) # [B, 64, 128, 128]
-        x9 = self.up4(x8, x1, x_color) # [B, 64, 256, 256]
+        x6 = self.up1(x5, x4, x_color)  # [B, 256, 32, 32]
+        x7 = self.up2(x6, x3, x_color)  # [B, 128, 64, 64]
+        x8 = self.up3(x7, x2, x_color)  # [B, 64, 128, 128]
+        x9 = self.up4(x8, x1, x_color)  # [B, 64, 256, 256]
         x_ab = self.outc(x9)
 
         # x_ab.size() -- [1, 2, 256, 256]

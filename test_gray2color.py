@@ -10,27 +10,31 @@ from models import ColorEncoder, ColorUNet
 
 import pdb
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 
 def mkdirs(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
+
 def Lab2RGB_out(img_lab):
     img_lab = img_lab.detach().cpu()
-    img_l = img_lab[:,:1,:,:]
-    img_ab = img_lab[:,1:,:,:]
+    img_l = img_lab[:, :1, :, :]
+    img_ab = img_lab[:, 1:, :, :]
     # print(torch.max(img_l), torch.min(img_l))
     # print(torch.max(img_ab), torch.min(img_ab))
     img_l = img_l + 50
-    pred_lab = torch.cat((img_l, img_ab), 1)[0,...].numpy()
+    pred_lab = torch.cat((img_l, img_ab), 1)[0, ...].numpy()
     # grid_lab = utils.make_grid(pred_lab, nrow=1).numpy().astype("float64")
     # print(grid_lab.shape)
-    out = (np.clip(color.lab2rgb(pred_lab.transpose(1, 2, 0)), 0, 1)* 255).astype("uint8")
+    out = (np.clip(color.lab2rgb(pred_lab.transpose(1, 2, 0)), 0, 1) * 255).astype("uint8")
     return out
+
 
 def RGB2Lab(inputs):
     return color.rgb2lab(inputs)
+
 
 def Normalize(inputs):
     l = inputs[:, :, 0:1]
@@ -38,15 +42,18 @@ def Normalize(inputs):
     l = l - 50
     lab = np.concatenate((l, ab), 2)
 
-    return lab.astype('float32')
+    return lab.astype("float32")
+
 
 def numpy2tensor(inputs):
-    out = torch.from_numpy(inputs.transpose(2,0,1))
+    out = torch.from_numpy(inputs.transpose(2, 0, 1))
     return out
 
+
 def tensor2numpy(inputs):
-    out = inputs[0,...].detach().cpu().numpy().transpose(1,2,0)
+    out = inputs[0, ...].detach().cpu().numpy().transpose(1, 2, 0)
     return out
+
 
 def preprocessing(inputs):
     # input: rgb, [0, 255], uint8
@@ -56,7 +63,7 @@ def preprocessing(inputs):
     # ((313, 335, 3), -0.0024549378619953544, 100.0)
     # L: [0, 100.0], A: [-127, 127], B: [-127, 127]
     img_lab = Normalize(RGB2Lab(inputs))
-    img = np.array(inputs, 'float32') # [0, 255]
+    img = np.array(inputs, "float32")  # [0, 255]
     img = numpy2tensor(img)
     img_lab = numpy2tensor(img_lab)
     # img.size() -- [3, 313, 335], [0, 255,0]
@@ -67,23 +74,33 @@ def preprocessing(inputs):
 def load_color_net(model, state_dict):
     """Load model."""
 
+    def name_transform(name):
+        # vgg.vgg_model.features.x.weight --> vgg.block.x.0.weight
+        if name.startswith("vgg.vgg_model.features."):
+            name_list = name.split(".")
+            return "vgg.block." + name_list[3] + ".0." + name_list[4]
+        return name
+
     target_state_dict = model.state_dict()
+    #
     for n, p in state_dict.items():
+        n = name_transform(n)
         if n in target_state_dict.keys():
             target_state_dict[n].copy_(p)
-        else:
-            raise KeyError(n)
+        # else:
+        #     raise KeyError(n)
+
 
 if __name__ == "__main__":
     device = "cuda"
 
-    model_name = 'Color2Embed_1_4.5w'
-    ckpt_path = 'experiments/Color2Embed_1/045000.pt'
-    test_dir_path = 'test_datasets/gray2color/exemplar_based/'
-    out_dir_path = 'results/gray2color/exemplar_based/' + model_name
+    model_name = "Color2Embed_1_4.5w"
+    ckpt_path = "experiments/Color2Embed_1/045000.pt"
+    test_dir_path = "test_datasets/gray2color/exemplar_based/"
+    out_dir_path = "results/gray2color/exemplar_based/" + model_name
     imgs_num = len(os.listdir(test_dir_path)) // 2
     imgsize = 256
-    
+
     mkdirs(out_dir_path)
 
     ckpt = torch.load(ckpt_path, map_location=lambda storage, loc: storage)
@@ -93,11 +110,13 @@ if __name__ == "__main__":
     load_color_net(colorEncoder, ckpt["colorEncoder"])
 
     colorEncoder.eval()
+    torch.save(colorEncoder.state_dict(), "/tmp/color_encoder.pth")
 
     colorUNet = ColorUNet().to(device)
     colorUNet.load_state_dict(ckpt["colorUNet"])
     colorUNet.eval()
 
+    torch.save(colorUNet.state_dict(), "/tmp/color_transform.pth")
 
     imgs = []
     imgs_lab = []
@@ -105,10 +124,10 @@ if __name__ == "__main__":
 
     for i in range(imgs_num):
         idx = i
-        print('Image', idx, 'Input Image', 'in%d.JPEG'%idx, 'Ref Image', 'ref%d.JPEG'%idx)
+        print("Image", idx, "Input Image", "in%d.JPEG" % idx, "Ref Image", "ref%d.JPEG" % idx)
 
-        img_path = os.path.join(test_dir_path, '%03d_in.png'%idx)
-        ref_img_path = os.path.join(test_dir_path, '%03d_ref.png'%idx)
+        img_path = os.path.join(test_dir_path, "%03d_in.png" % idx)
+        ref_img_path = os.path.join(test_dir_path, "%03d_ref.png" % idx)
 
         img1 = Image.open(img_path).convert("RGB")
         width, height = img1.size
@@ -125,21 +144,34 @@ if __name__ == "__main__":
         # print('-------',torch.max(img1_lab[:,:1,:,:]), torch.min(img1_lab[:,1:,:,:]))
 
         with torch.no_grad():
-            img2_resize = F.interpolate(img2 / 255., size=(imgsize, imgsize), mode='bilinear', recompute_scale_factor=False, align_corners=False)
+            img2_resize = F.interpolate(
+                img2 / 255.0,
+                size=(imgsize, imgsize),
+                mode="bilinear",
+                recompute_scale_factor=False,
+                align_corners=False,
+            )
 
             # img2_resize.size() -- [1, 3, 256, 256], [0.0, 1.0]
             color_vector = colorEncoder(img2_resize)
             # color_vector.size() -- [1, 512, 1, 1]
 
-            img1_L_resize = F.interpolate(img1_lab[:,:1,:,:] / 50., size=(imgsize, imgsize), mode='bilinear', recompute_scale_factor=False, align_corners=False)
+            img1_L_resize = F.interpolate(
+                img1_lab[:, :1, :, :] / 50.0,
+                size=(imgsize, imgsize),
+                mode="bilinear",
+                recompute_scale_factor=False,
+                align_corners=False,
+            )
             # img1_L_resize.size() -- [1, 1, 256, 256], [-1.0, 1.0]
             fake_ab = colorUNet((img1_L_resize, color_vector))
-            fake_ab = F.interpolate(fake_ab*110, size=(height, width), mode='bilinear', recompute_scale_factor=False, align_corners=False)
-            fake_img = torch.cat((img1_lab[:,:1,:,:], fake_ab), dim=1)
+            fake_ab = F.interpolate(
+                fake_ab * 110, size=(height, width), mode="bilinear", recompute_scale_factor=False, align_corners=False
+            )
+            fake_img = torch.cat((img1_lab[:, :1, :, :], fake_ab), dim=1)
             fake_img = Lab2RGB_out(fake_img)
 
-
-            out_img_path = os.path.join(out_dir_path, 'in%d_ref%d.png'%(idx, idx))
+            out_img_path = os.path.join(out_dir_path, "in%d_ref%d.png" % (idx, idx))
             io.imsave(out_img_path, fake_img)
 
             # re_img, re_img_lab = preprocessing(fake_img)
@@ -150,4 +182,4 @@ if __name__ == "__main__":
             # cos_d = torch.cosine_similarity(color_vector, re_color_vector, dim=1)
             # cos_d_avg += cos_d
 
-    print('Average Cosine Distance is: ', cos_d_avg/imgs_num)
+    print("Average Cosine Distance is: ", cos_d_avg / imgs_num)
