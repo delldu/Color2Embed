@@ -25,8 +25,6 @@ import torch.nn.functional as F
 
 import pdb
 
-COLOR_ZEROPAD_TIMES = 8
-
 
 def get_model():
     """Create model."""
@@ -46,6 +44,7 @@ def get_model():
     model = model.to(device)
     model.eval()
 
+    print(f"Running on {device} ...")
     model = torch.jit.script(model)
 
     todos.data.mkdir("output")
@@ -58,8 +57,12 @@ def get_model():
 def model_forward(model, device, g_input_tensor, c_input_tensor):
     g_input_tensor = g_input_tensor.to(device)
     c_input_tensor = c_input_tensor.to(device)
-    with torch.no_grad():
-        output_tensor = model(g_input_tensor, c_input_tensor)
+
+    torch.cuda.synchronize()
+    with torch.jit.optimized_execution(False):
+        with torch.no_grad():
+            output_tensor = model(g_input_tensor, c_input_tensor)
+    torch.cuda.synchronize()
     return output_tensor
 
 
