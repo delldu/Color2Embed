@@ -12,16 +12,13 @@
 __version__ = "1.0.0"
 
 import os
-import time
 from tqdm import tqdm
 import torch
+import torch.nn.functional as F
 
 import redos
 import todos
-
 from . import data, color
-from einops import rearrange
-import torch.nn.functional as F
 
 import pdb
 
@@ -55,15 +52,7 @@ def get_model():
 
 
 def model_forward(model, device, g_input_tensor, c_input_tensor):
-    g_input_tensor = g_input_tensor.to(device)
-    c_input_tensor = c_input_tensor.to(device)
-
-    torch.cuda.synchronize()
-    with torch.jit.optimized_execution(False):
-        with torch.no_grad():
-            output_tensor = model(g_input_tensor, c_input_tensor)
-    torch.cuda.synchronize()
-    return output_tensor
+    return todos.model.two_forward(model, device, g_input_tensor, c_input_tensor)
 
 
 def image_client(name, grey_input_files, output_dir):
