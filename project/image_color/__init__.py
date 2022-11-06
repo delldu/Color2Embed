@@ -16,7 +16,6 @@ from tqdm import tqdm
 import torch
 import torch.nn.functional as F
 
-import redos
 import todos
 from . import data, color
 
@@ -51,39 +50,6 @@ def get_model():
     return model, device
 
 
-def model_forward(model, device, g_input_tensor, c_input_tensor):
-    return todos.model.two_forward(model, device, g_input_tensor, c_input_tensor)
-
-
-def image_client(name, grey_input_files, output_dir):
-    redo = redos.Redos(name)
-    cmd = redos.image.Command()
-    grey_filenames = todos.data.load_files(grey_input_files)
-    for filename in grey_filenames:
-        output_file = f"{output_dir}/{os.path.basename(filename)}"
-        context = cmd.color(filename, output_file)
-        redo.set_queue_task(context)
-    print(f"Created {len(grey_filenames)} tasks for {name}.")
-
-
-def image_server(name, host="localhost", port=6379):
-    # load model
-    model, device = get_model()
-
-    def do_service(input_file, output_file, targ):
-        print(f"  clean {input_file} ...")
-        try:
-            input_tensor = todos.data.load_rgba_tensor(input_file)
-            output_tensor = model_forward(model, device, input_tensor)
-            todos.data.save_tensor(output_tensor, output_file)
-            return True
-        except Exception as e:
-            print("exception: ", e)
-            return False
-
-    return redos.image.service(name, "image_color", do_service, host, port)
-
-
 def image_predict(grey_input_files, color_input_files, output_dir):
     # Create directory to store result
     todos.data.mkdir(output_dir)
@@ -104,7 +70,7 @@ def image_predict(grey_input_files, color_input_files, output_dir):
         g_input_tensor = todos.data.load_tensor(g_filename)
         c_input_tensor = todos.data.load_tensor(c_filename)
 
-        predict_tensor = model_forward(model, device, g_input_tensor, c_input_tensor)
+        predict_tensor = todos.model.two_forward(model, device, g_input_tensor, c_input_tensor)
         output_file = f"{output_dir}/{os.path.basename(g_filename)}"
 
         H, W = g_input_tensor.size(2), g_input_tensor.size(3)
