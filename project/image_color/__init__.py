@@ -22,6 +22,28 @@ from . import data, color
 import pdb
 
 
+def get_tvm_model():
+    """Create model."""
+
+    model_path = "models/image_color.pth"
+    cdir = os.path.dirname(__file__)
+    checkpoint = model_path if cdir == "" else cdir + "/" + model_path
+
+    model = color.ColorModel()
+
+    # todos.model.load(model.encoder, "/tmp/color_encoder.pth")
+    # todos.model.load(model.decoder, "/tmp/color_transform.pth")
+    # torch.save(model.state_dict(), "/tmp/image_color.pth")
+
+    todos.model.load(model, checkpoint)
+    device = todos.model.get_device()
+    model = model.to(device)
+    model.eval()
+
+    print(f"Running on {device} ...")
+    return model, device
+
+
 def get_model():
     """Create model."""
 

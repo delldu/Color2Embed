@@ -14,6 +14,7 @@ import os
 import time
 import random
 import torch
+import todos
 
 import image_color
 
@@ -23,7 +24,8 @@ if __name__ == "__main__":
     model, device = image_color.get_model()
 
     N = 100
-    B, C, H, W = 1, 3, 1024, 1024
+    B, C, H, W = 1, 3, model.max_h, model.max_w
+    # GPU 2G, 40ms
 
     mean_time = 0
     progress_bar = tqdm(total=N)
@@ -37,9 +39,7 @@ if __name__ == "__main__":
         x2 = torch.randn(B, C, H + h, W + w)
 
         start_time = time.time()
-        with torch.no_grad():
-            y = model(x1.to(device), x2.to(device))
-        torch.cuda.synchronize()
+        y = todos.model.two_forward(model, device, x1, x2)
         mean_time += time.time() - start_time
 
     mean_time /= N

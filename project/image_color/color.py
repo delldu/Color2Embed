@@ -285,6 +285,14 @@ class ColorModel(nn.Module):
         self.encoder = ColorEncoder()
         self.decoder = ColorDecoder()
 
+        # for smoke test
+        self.max_h = 1024
+        self.max_w = 2048
+        self.max_times = 1
+        self.scale = 1
+        # GPU 2G, 40ms
+
+
     def forward(self, grey, color):
         # gray in [0, 1.0]
         H, W = int(grey.size(2)), int(grey.size(3))
